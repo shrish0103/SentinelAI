@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.dependencies import get_event_store, get_llm_service, get_notifier
-from app.schemas.resume import ResumeAnswer, ResumeQuestion
-from app.services.event_store import EventStore
-from app.services.llm import LLMService, LLMServiceError
-from app.services.notifier import TelegramNotifier
+from core.dependencies import get_event_store, get_llm_service, get_notifier
+from schemas.resume import ResumeAnswer, ResumeQuestion
+from services.event_store import EventStore
+from services.llm import LLMService, LLMServiceError
+from services.notifier import TelegramNotifier
 
 router = APIRouter()
 

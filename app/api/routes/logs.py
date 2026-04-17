@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.core.dependencies import get_event_store
-from app.schemas.log import LogListResponse
-from app.services.event_store import EventStore
+from core.dependencies import get_event_store
+from schemas.log import LogListResponse
+from services.event_store import EventStore
 
 router = APIRouter()
 

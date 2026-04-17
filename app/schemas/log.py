@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from app.schemas.alert import EventRecord
+from schemas.alert import EventRecord
 
 
 class LogListResponse(BaseModel):

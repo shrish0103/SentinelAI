@@ -3,7 +3,7 @@ from typing import Iterable
 from uuid import uuid4
 import asyncio
 
-from app.schemas.alert import EventRecord, ExceptionInfo
+from schemas.alert import EventRecord, ExceptionInfo
 
 
 class EventStore:

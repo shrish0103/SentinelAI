@@ -5,8 +5,8 @@ from aiogram import Bot
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.exceptions import TelegramAPIError
 
-from app.core.config import Settings
-from app.schemas.alert import EventRecord
+from core.config import Settings
+from schemas.alert import EventRecord
 
 
 class TelegramNotifier:

@@ -1,11 +1,11 @@
 from functools import lru_cache
 
-from app.core.config import Settings, get_settings as load_settings
-from app.services.admin import AdminService
-from app.services.event_store import EventStore
-from app.services.health import HealthService
-from app.services.llm import LLMService
-from app.services.notifier import TelegramNotifier
+from core.config import Settings, get_settings as load_settings
+from services.admin import AdminService
+from services.event_store import EventStore
+from services.health import HealthService
+from services.llm import LLMService
+from services.notifier import TelegramNotifier
 
 
 @lru_cache

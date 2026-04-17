@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.routes import admin, alerts, health, logs, privacy, resume
+from api.routes import admin, alerts, health, logs, privacy, resume
 
 api_router = APIRouter()
 api_router.include_router(alerts.router, tags=["alerts"])

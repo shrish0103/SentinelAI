@@ -1,4 +1,4 @@
-from app.core.config import Settings
+from core.config import Settings
 import httpx
 
 

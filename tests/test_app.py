@@ -1,11 +1,11 @@
 from httpx import ASGITransport, AsyncClient
 import pytest
 
-from app.core.dependencies import get_llm_service, get_notifier
-from app.main import app
-from app.schemas.alert import EventRecord
-from app.services.llm import LLMServiceError
-from app.services.notifier import TelegramNotifier
+from core.dependencies import get_llm_service, get_notifier
+from main import app
+from schemas.alert import EventRecord
+from services.llm import LLMServiceError
+from services.notifier import TelegramNotifier
 
 
 class StubLLMService:

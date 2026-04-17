@@ -2,10 +2,10 @@ import asyncio
 
 import httpx
 
-from app.core.config import Settings
-from app.schemas.health import HealthResponse, ServiceHealth
-from app.services.event_store import EventStore
-from app.services.notifier import TelegramNotifier
+from core.config import Settings
+from schemas.health import HealthResponse, ServiceHealth
+from services.event_store import EventStore
+from services.notifier import TelegramNotifier
 
 
 class HealthService:

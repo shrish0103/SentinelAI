@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 
-from app.core.dependencies import get_admin_service, get_settings
-from app.schemas.admin import AdminCommandRequest, AdminCommandResponse
-from app.services.admin import AdminService
+from core.dependencies import get_admin_service, get_settings
+from schemas.admin import AdminCommandRequest, AdminCommandResponse
+from services.admin import AdminService
 
 router = APIRouter()
 

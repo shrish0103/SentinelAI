@@ -1,9 +1,9 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, status
 
-from app.core.dependencies import get_event_store, get_notifier
-from app.schemas.alert import AlertIngestRequest, AlertResponse, EventRecord
-from app.services.event_store import EventStore
-from app.services.notifier import TelegramNotifier
+from core.dependencies import get_event_store, get_notifier
+from schemas.alert import AlertIngestRequest, AlertResponse, EventRecord
+from services.event_store import EventStore
+from services.notifier import TelegramNotifier
 
 router = APIRouter()
 

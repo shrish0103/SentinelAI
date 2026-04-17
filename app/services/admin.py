@@ -1,6 +1,6 @@
-from app.schemas.admin import AdminCommandResponse
-from app.services.event_store import EventStore
-from app.services.health import HealthService
+from schemas.admin import AdminCommandResponse
+from services.event_store import EventStore
+from services.health import HealthService
 
 
 class AdminService:
