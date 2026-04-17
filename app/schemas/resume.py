@@ -7,5 +7,6 @@ class ResumeQuestion(BaseModel):
 
 class ResumeAnswer(BaseModel):
     answer: str
+    html_answer: str | None = None
     provider: str
     used_fallback: bool = False

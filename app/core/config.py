@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         default='["https://shrish0.github.io","https://semimat-otto-undilatorily.ngrok-free.dev"]'
     )
     service_targets_json: str = Field(
-        default='{"api":"http://localhost:8000","telegram":"telegram://bot","llm":"provider://active"}'
+        default='{"sentinel-ai":"https://sentinelai-p4xw.onrender.com","browser-mcp":"https://browser-mcp-79y4.onrender.com/health"}'
     )
 
     @property
