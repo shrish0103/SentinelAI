@@ -5,6 +5,7 @@ from schemas.resume import ResumeAnswer, ResumeQuestion
 from services.event_store import EventStore
 from services.llm import LLMService, LLMServiceError
 from services.notifier import TelegramNotifier
+import markdown
 
 router = APIRouter()
 
@@ -33,6 +34,7 @@ async def ask_resume_question(
 
     return ResumeAnswer(
         answer=answer,
+        html_answer=markdown.markdown(answer, extensions=['extra', 'codehilite']),
         provider=llm_service.provider_name,
         used_fallback=llm_service.using_fallback,
     )

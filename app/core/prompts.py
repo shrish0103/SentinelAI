@@ -16,11 +16,10 @@ PROMPTS: dict[str, dict[str, str]] = {
         ),
         "user_context": (
             "### Guidelines:\n"
-            "1. **Source of Truth**: Use ONLY the provided resume context. If information is missing, politely state "
-            "that you don't have that specific detail but highlight a related strength instead.\n"
-            "2. **Tone**: Professional, technical, and helpful. Use a warm but concise tone.\n"
-            "3. **Format**: Use Markdown for clarity (bullet points, bold text).\n"
-            "4. **No Hallucinations**: Do not make up facts about Shrish.\n\n"
+            "1. **Clean Formatting**: Do NOT use Markdown tables. Use simple bullet points or numbered lists instead.\n"
+            "2. **No Excessive Bolding**: Use bold text sparingly for key terms only. Do not bold entire paragraphs.\n"
+            "3. **Tone**: Professional and concise. Limit response to 3-4 short paragraphs maximum.\n"
+            "4. **Source of Truth**: Use ONLY the provided resume context. If information is missing, state it clearly.\n\n"
             "### Current Resume Data (JSON):\n{resume_context}\n\n"
             "### User Question:\n{user_question}"
         )
@@ -44,19 +43,34 @@ def get_resume_messages(question: str) -> list[dict[str, str]]:
 def get_admin_help_text(is_admin: bool) -> str:
     if is_admin:
         return (
-            "🛡️ *SentinelAI Admin Console*\n\n"
-            "You have full access. Available commands:\n"
-            "• `ping`: Check if the control plane is alive.\n"
-            "• `logs`: View the 5 most recent internal events.\n"
-            "• `check service_name`: Inspect status of a specific service (api, database, etc.).\n\n"
-            "💡 *Note*: You can also ask me anything about Shrish's portfolio directly!"
+            "🛡️ *Hello Admin! Welcome to the Control Plane.*\n\n"
+            "You have elevated permissions to monitor and manage SentinelAI systems.\n\n"
+            "🚀 *Core Commands*\n"
+            "• `/ping` - Show all service aliases and URLs.\n"
+            "• `/ping <alias>` - Ping a specific service (e.g., `sentinel-ai`).\n"
+            "• `/check <service>` - Get detailed health telemetry.\n"
+            "• `/logs` - View recent system audit logs.\n\n"
+            "🧪 *Testing*\n"
+            "• `/test` - Show available test suites.\n"
+            "• `/test telegram` - Verify alert delivery pipeline.\n\n"
+            "💡 *Tip*: You can also type any question about Shrish's portfolio. To see the guest menu, type `/help_guest`."
         )
     else:
         return (
-            "👋 *Welcome to SentinelAI*\n\n"
-            "I am Shrish's AI assistant. You can ask me questions about his:\n"
-            "• Professional experience and skills\n"
-            "• Projects like Edu Bot or Agri Core\n"
-            "• Certifications and achievements\n\n"
-            "_How can I help you today?_"
+            "👋 *Shrish Gupta's Portfolio Assistant*\n\n"
+            "I'm an AI representative for Shrish. Use the commands below to explore his background, or just type a question directly!\n\n"
+            "📜 *Personal & Academic*\n"
+            "• `/personal` - View personal details.\n"
+            "• `/academic` - Check academic background.\n"
+            "• `/coursework` - See relevant coursework.\n\n"
+            "💡 *Skills & Achievements*\n"
+            "• `/skills` - View technical & soft skills.\n"
+            "• `/achievements` - See awards & honors.\n\n"
+            "🚀 *Projects & Experience*\n"
+            "• `/projects` - Explore his code & builds.\n"
+            "• `/experience` - View professional work history.\n\n"
+            "📜 *Resume*\n"
+            "• `/certifications` - Check certifications.\n"
+            "• `/resume` - Request a copy of his resume.\n\n"
+            "💡 *Note*: You can also just ask things like _'Where does Shrish work?'_ or _'Tell me about his B.Tech projects.'_"
         )

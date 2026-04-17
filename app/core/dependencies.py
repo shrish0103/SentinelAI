@@ -38,6 +38,8 @@ def get_admin_service() -> AdminService:
         event_store=get_event_store(),
         health_service=get_health_service(),
         llm_service=get_llm_service(),
+        notifier=get_notifier(),
+        settings=load_settings(),
     )
 
 
