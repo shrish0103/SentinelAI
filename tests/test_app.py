@@ -82,6 +82,22 @@ async def test_privacy_policy_endpoint_returns_html() -> None:
 
 
 @pytest.mark.asyncio
+async def test_cors_allows_configured_frontend_origin() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.options(
+            "/resume/ask",
+            headers={
+                "Origin": "https://shrish0.github.io",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://shrish0.github.io"
+
+
+@pytest.mark.asyncio
 async def test_resume_failure_keeps_specific_provider_context() -> None:
     app.dependency_overrides[get_llm_service] = lambda: FailingLLMService()
     app.dependency_overrides[get_notifier] = lambda: StubNotifier()

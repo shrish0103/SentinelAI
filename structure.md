@@ -27,6 +27,7 @@
 ### Core
 
 - `app/core/config.py` -> Environment-driven settings
+  Includes CORS allowlist configuration for approved frontend origins
 - `app/core/dependencies.py` -> Shared dependency providers
 
 ### Schemas

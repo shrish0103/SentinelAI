@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
     health_timeout_seconds: float = 3.0
+    cors_origins_json: str = Field(
+        default='["https://shrish0.github.io","https://semimat-otto-undilatorily.ngrok-free.dev"]'
+    )
     service_targets_json: str = Field(
         default='{"api":"http://localhost:8000","telegram":"telegram://bot","llm":"provider://active"}'
     )
@@ -39,6 +42,10 @@ class Settings(BaseSettings):
     @property
     def service_targets(self) -> dict[str, str]:
         return json.loads(self.service_targets_json)
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return json.loads(self.cors_origins_json)
 
     @property
     def owner_telegram_id_set(self) -> set[int]:
