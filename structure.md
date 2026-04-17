@@ -22,6 +22,7 @@
 - `app/api/routes/health.py` -> `/health/check` service health endpoint
 - `app/api/routes/logs.py` -> `/logs` event query endpoint
 - `app/api/routes/admin.py` -> `/admin/exec` admin command endpoint
+- `app/api/routes/privacy.py` -> Public `/privacy-policy` page for Telegram BotFather
 
 ### Core
 

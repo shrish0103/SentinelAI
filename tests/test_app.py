@@ -71,6 +71,17 @@ async def test_resume_endpoint_returns_answer() -> None:
 
 
 @pytest.mark.asyncio
+async def test_privacy_policy_endpoint_returns_html() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/privacy-policy")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "SentinelAI Privacy Policy" in response.text
+
+
+@pytest.mark.asyncio
 async def test_resume_failure_keeps_specific_provider_context() -> None:
     app.dependency_overrides[get_llm_service] = lambda: FailingLLMService()
     app.dependency_overrides[get_notifier] = lambda: StubNotifier()
