@@ -1,5 +1,6 @@
 from core.config import Settings
 import httpx
+from core.prompts import get_resume_messages
 
 
 class LLMServiceError(Exception):
@@ -49,7 +50,7 @@ class LLMProvider:
 class LocalResumeProvider(LLMProvider):
     name = "local"
 
-    async def generate(self, question: str, context: str) -> str:
+    async def generate(self, question: str) -> str:
         lower_question = question.lower()
         if "fail" in lower_question:
             raise LLMServiceError(
@@ -64,7 +65,7 @@ class LocalResumeProvider(LLMProvider):
                 "Shrish specializes in backend engineering, FastAPI, "
                 "microservices, distributed systems, observability, and applied AI."
             )
-        return f"Context: {context}\n\nQuestion: {question}"
+        return f"Local fallback echo: {question}"
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -74,22 +75,10 @@ class OpenAICompatibleProvider(LLMProvider):
         self._api_key = api_key
         self._model_name = model_name
 
-    async def generate(self, question: str, context: str) -> str:
+    async def generate(self, question: str) -> str:
         payload = {
             "model": self._model_name,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You are the SentinelAI portfolio assistant. Answer based only on the "
-                        "provided resume context. If the context is insufficient, say so briefly."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"Resume context:\n{context}\n\nQuestion:\n{question}",
-                },
-            ],
+            "messages": get_resume_messages(question),
         }
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -164,13 +153,13 @@ class OllamaProvider(LLMProvider):
         self._base_url = base_url.rstrip("/")
         self._model_name = model_name
 
-    async def generate(self, question: str, context: str) -> str:
+    async def generate(self, question: str) -> str:
+        messages = get_resume_messages(question)
+        # Ollama /api/generate usually takes a prompt, we'll combine system and user
+        combined_prompt = f"{messages[0]['content']}\n\n{messages[1]['content']}"
         payload = {
             "model": self._model_name,
-            "prompt": (
-                "You are the SentinelAI portfolio assistant. Answer based only on the "
-                f"provided resume context.\n\nResume context:\n{context}\n\nQuestion:\n{question}"
-            ),
+            "prompt": combined_prompt,
             "stream": False,
         }
         try:
@@ -284,4 +273,4 @@ class LLMService:
         )
 
     async def answer_question(self, question: str) -> str:
-        return await self._provider.generate(question=question, context=self._settings.resume_context)
+        return await self._provider.generate(question=question)

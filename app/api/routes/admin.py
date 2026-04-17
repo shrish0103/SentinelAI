@@ -14,9 +14,5 @@ async def execute_admin_command(
     settings=Depends(get_settings),
     x_telegram_user_id: int | None = Header(default=None),
 ) -> AdminCommandResponse:
-    if x_telegram_user_id not in settings.owner_telegram_id_set:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Owner access required.",
-        )
-    return await admin_service.execute(payload.command)
+    is_admin = x_telegram_user_id in settings.owner_telegram_id_set
+    return await admin_service.execute(payload.command, is_admin=is_admin)
