@@ -1,117 +1,69 @@
-# 🚀 SentinelAI
+# SentinelAI
 
-**Personal Control Plane for Backend Systems + AI Portfolio**
+> **Personal Control Plane for Backend Systems and AI Portfolio**
 
----
-
-## 🧠 What is SentinelAI?
-
-SentinelAI is a unified backend system that combines:
-
-* 📡 Real-time alerting
-* 🤖 AI-powered portfolio assistant
-* 🧪 Service health monitoring
-* 🔐 Role-based Telegram control
-
-It acts as a **central intelligence layer** over your systems.
+SentinelAI is a self-hosted intelligence layer that sits over your backend infrastructure, routing alerts, answering portfolio questions with AI, monitoring service health, and giving you Telegram-based command access from anywhere.
 
 ---
 
-## ⚡ Key Capabilities
+## Why SentinelAI?
 
-### 📡 Alert System
+Most personal backend projects are either observable or interactive, rarely both. SentinelAI unifies:
 
-* Central `/alert` endpoint
-* Structured event ingestion
-* Telegram notifications
-* Severity levels:
+- A structured alerting pipeline that ingests events from any service
+- An AI assistant trained on your resume and portfolio
+- A health monitoring layer across APIs, databases, and providers
+- A Telegram bot with role-based access control
 
-  * info
-  * warning
-  * critical
+One system. Full visibility. Yours to own.
 
 ---
 
-### 🤖 AI Portfolio (`/resume/ask`)
+## Core Features
 
-* Answers questions about:
+### Alert Pipeline
 
-  * skills
-  * projects
-  * experience
-* Provider-agnostic LLM system
-* Supports fallback strategy
+Expose a single `/alert` endpoint across all your services. Events are ingested, classified by severity, stored, and optionally routed to Telegram.
 
----
+| Severity | Use Case |
+|----------|----------|
+| `info` | Routine events, deploys, state changes |
+| `warning` | Degraded performance, retries, soft failures |
+| `critical` | Auth failures, crashes, payment errors |
 
-### 🚨 LLM Failure Alerts (NEW)
+### AI Portfolio Assistant
 
-If AI provider fails (e.g. OpenRouter):
+Ask natural language questions about Shrish's skills, projects, and experience via `/resume/ask`. The LLM layer is provider-agnostic and can call OpenRouter, OpenAI, Ollama, or a local fallback provider depending on environment configuration.
 
-* system logs error
-* triggers internal alert
-* sends Telegram notification
+### LLM Failure Observability
 
-👉 Ensures **AI reliability is observable**
+When an AI provider fails, SentinelAI logs the failure, emits an internal alert, and can notify the owner through Telegram. AI reliability is treated as a first-class system concern.
 
----
+### Telegram Bot and Notifications
 
-### 🔐 Telegram Bot
+The current bootstrap is wired for `aiogram`. Telegram is used for notification delivery and is the intended path for owner-only command access as the bot layer expands.
 
-#### 👑 Owner
+### Health Monitoring
 
-* full access
-* system commands
-* logs & alerts
+Poll `/health/check` to inspect the status of any registered service, including databases, external APIs, LLM providers, or your own microservices. Queryable per-service for granular diagnostics.
 
-#### 👤 Visitors
+### Structured Logging
 
-* AI-only interaction
+Every significant event is logged, including alerts, exceptions, AI failures, and admin actions, giving you a complete audit trail without external tooling.
 
 ---
 
-### 🧪 Health Monitoring
+## API Reference
 
-* `/health/check`
-* monitors services like:
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/alert` | Ingest a structured alert event |
+| `POST` | `/resume/ask` | Ask the AI portfolio assistant |
+| `GET` | `/health/check` | Check service health with optional `?service=` |
+| `GET` | `/logs` | Retrieve recent system logs |
+| `POST` | `/admin/exec` | Execute owner-only admin commands |
 
-  * APIs
-  * DB
-  * external providers
-
----
-
-### 📜 Logging
-
-* Alerts
-* Exceptions
-* AI failures
-* Admin actions
-
----
-
-## 🧱 Event Structure
-
-All alerts follow a standard schema:
-
-```json
-{
-  "app_name": "portfolio-api",
-  "service": "auth-service",
-  "level": "critical",
-  "message": "JWT validation failed",
-  "exception": {
-    "type": "AuthError",
-    "message": "Invalid token"
-  }
-}
-```
-
----
-
-## 🔌 API Endpoints
-
-### POST `/alert`
+### Example `POST /alert`
 
 ```json
 {
@@ -122,9 +74,7 @@ All alerts follow a standard schema:
 }
 ```
 
----
-
-### POST `/resume/ask`
+### Example `POST /resume/ask`
 
 ```json
 {
@@ -132,109 +82,120 @@ All alerts follow a standard schema:
 }
 ```
 
----
-
-### GET `/health/check`
-
-```
-/health/check?service=supabase
-```
-
----
-
-### GET `/logs`
-
-Retrieve system logs
-
----
-
-### POST `/admin/exec`
+### Example `POST /admin/exec`
 
 ```json
 {
-  "command": "check supabase"
+  "command": "check api"
 }
 ```
 
 ---
 
-## 🤖 Model Strategy
+## Model Configuration
 
-Provider-agnostic:
+SentinelAI is not tied to one provider. Swap models through environment variables.
 
-* OpenRouter
-* OpenAI
-* Ollama
-
----
-
-### Config
-
-```
+```env
 MODEL_PROVIDER=openrouter
-MODEL_NAME=qwen/qwen-2.5-7b-instruct
-API_KEY=your_key
+MODEL_NAME=openai/gpt-4o-mini
+API_KEY=your_openrouter_key
 ```
 
----
+Supported providers:
 
-## ⚠️ Handling Model Instability
+- `openrouter`
+- `openai`
+- `ollama`
+- `local`
 
-Free models may:
-
-* become paid
-* be rate-limited
-* fail unexpectedly
-
-SentinelAI handles this via:
-
-* failure detection
-* alerting
-* fallback-ready design
+If `MODEL_PROVIDER=openrouter`, `/resume/ask` uses the OpenRouter chat completions API with the configured key from `.env`.
 
 ---
 
-## 🧱 Tech Stack
+## Tech Stack
 
-* FastAPI
-* Telegram Bot (aiogram)
-* LLM APIs
-* Supabase (optional)
-* Docker
+| Layer | Technology |
+|-------|------------|
+| API | FastAPI |
+| Bot | aiogram |
+| AI | OpenRouter / OpenAI / Ollama / local fallback |
+| HTTP Client | httpx |
+| Config | pydantic-settings |
 
 ---
 
-## 🚀 Run Locally
+## Running Locally
 
 ```bash
 git clone <repo>
-cd sentinel-ai
-
+cd SentinelAI
+python -m venv venv
+venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+pip install pytest pytest-asyncio pytest-cov
+uvicorn app.main:app --reload
+```
+
+Create a `.env` file from `.env.example`.
+
+Minimal OpenRouter setup:
+
+```env
+MODEL_PROVIDER=openrouter
+MODEL_NAME=openai/gpt-4o-mini
+API_KEY=your_openrouter_key
+```
+
+Optional Telegram setup:
+
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+OWNER_TELEGRAM_IDS=your_numeric_telegram_user_id,another_owner_id
+```
+
+The current bootstrap already includes:
+
+- An in-memory event store for alerts and logs
+- A real HTTP-backed provider layer for OpenRouter, OpenAI, and Ollama
+- A local fallback provider for offline development
+- Telegram notification delivery through `aiogram`
+
+Project structure is tracked in `structure.md` to keep file ownership clear as the system grows.
+
+### Quick API Smoke Test
+
+Once the server is running:
+
+```bash
+curl -X POST http://127.0.0.1:8000/resume/ask ^
+  -H "Content-Type: application/json" ^
+  -d "{\"question\":\"What does Shrish specialize in?\"}"
 ```
 
 ---
 
-## 🔐 Security
+## Security
 
-* Telegram ID-based auth
-* No public admin endpoints
-* Env-based secrets
-
----
-
-## 💡 Roadmap
-
-* [ ] Queue system (Redis)
-* [ ] Vector search (RAG)
-* [ ] Dashboard UI
-* [ ] Alert deduplication
-* [ ] Rate limiting
+- Auth is intended to be enforced through Telegram user ID verification
+- Secrets live in environment variables, not in source control
+- Input validation is handled through typed request schemas
 
 ---
 
-## 🧑‍💻 Author
+## Roadmap
 
-Shrish Gupta
-Backend Engineer — FastAPI, Microservices, Distributed Systems
+- [ ] Redis-backed queue system
+- [ ] Vector search over resume and portfolio context
+- [ ] Full Telegram command router
+- [ ] Alert deduplication
+- [ ] Scheduled health polling
+- [ ] Dashboard UI
+
+---
+
+## Author
+
+**Shrish Gupta**  
+Backend Engineer focused on FastAPI, microservices, distributed systems, observability, and applied AI
