@@ -1,0 +1,5 @@
+aiogram==3.27.0
+fastapi==0.136.0
+httpx==0.28.1
+pydantic-settings==2.13.1
+uvicorn[standard]==0.44.0

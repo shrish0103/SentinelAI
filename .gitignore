@@ -20,4 +20,3 @@ task.md
 .ruff_cache/
 
 stitch/
-*.txt
