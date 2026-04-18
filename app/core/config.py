@@ -15,9 +15,11 @@ class Settings(BaseSettings):
 
     app_name: str = "SentinelAI"
     app_env: str = "development"
+    deploy_url: str = "http://localhost:8000"
     model_provider: str = "local"
     model_name: str = "sentinel-resume-local"
     api_key: str | None = None
+    fallback_model_name: str = "openrouter/free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openai_base_url: str = "https://api.openai.com/v1"
     ollama_base_url: str = "http://localhost:11434"

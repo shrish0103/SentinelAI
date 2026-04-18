@@ -1,6 +1,10 @@
-from core.config import Settings
 import httpx
+import logging
 from core.prompts import get_resume_messages
+from core.config import Settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class LLMServiceError(Exception):
@@ -43,14 +47,15 @@ class LLMServiceError(Exception):
 class LLMProvider:
     name = "base"
 
-    async def generate(self, question: str, context: str) -> str:
+    async def generate(self, question: str) -> tuple[str, str]:
+        """Returns (content, actual_model_name)"""
         raise NotImplementedError
 
 
 class LocalResumeProvider(LLMProvider):
     name = "local"
 
-    async def generate(self, question: str) -> str:
+    async def generate(self, question: str) -> tuple[str, str]:
         lower_question = question.lower()
         if "fail" in lower_question:
             raise LLMServiceError(
@@ -63,9 +68,10 @@ class LocalResumeProvider(LLMProvider):
         if "specialize" in lower_question or "specialise" in lower_question:
             return (
                 "Shrish specializes in backend engineering, FastAPI, "
-                "microservices, distributed systems, observability, and applied AI."
+                "microservices, distributed systems, observability, and applied AI.",
+                "sentinel-resume-local"
             )
-        return f"Local fallback echo: {question}"
+        return f"Local fallback echo: {question}", "sentinel-resume-local"
 
 
 class OpenAICompatibleProvider(LLMProvider):
@@ -135,7 +141,10 @@ class OpenAICompatibleProvider(LLMProvider):
 
         data = response.json()
         try:
-            return data["choices"][0]["message"]["content"].strip()
+            content = data["choices"][0]["message"]["content"].strip()
+            # OpenRouter often returns the actual model used even if an alias was requested
+            actual_model = data.get("model", self._model_name)
+            return content, actual_model
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMServiceError(
                 provider=self.name,
@@ -216,7 +225,7 @@ class OllamaProvider(LLMProvider):
                 detail="The Ollama response did not include a response field",
                 hint="Inspect the upstream payload format and model compatibility.",
             )
-        return answer.strip()
+        return answer.strip(), self._model_name
 
 
 class LLMService:
@@ -272,5 +281,32 @@ class LLMService:
             hint="Choose one of: openrouter, openai, ollama, local.",
         )
 
-    async def answer_question(self, question: str) -> str:
-        return await self._provider.generate(question=question)
+    async def answer_question(self, question: str) -> tuple[str, str, bool]:
+        """Returns (content, actual_model, used_fallback)"""
+        try:
+            content, model = await self._provider.generate(question=question)
+            logger.info(f"LLM Response generated using primary model: {model}")
+            return content, model, False
+        except LLMServiceError as exc:
+            # If the primary provider fails due to upstream issues, try fallback
+            if (
+                exc.category in ("upstream-http-error", "timeout", "network-connectivity")
+                and self.provider_name == "openrouter"
+                and self._settings.api_key
+            ):
+                logger.warning(f"Primary OpenRouter model failed: {exc.summary}. Attempting fallback...")
+                try:
+                    fallback_provider = OpenAICompatibleProvider(
+                        name="openrouter",
+                        base_url=self._settings.openrouter_base_url,
+                        api_key=self._settings.api_key,
+                        model_name=self._settings.fallback_model_name
+                    )
+                    content, model = await fallback_provider.generate(question=question)
+                    logger.info(f"LLM Response generated using FALLBACK model: {model}")
+                    return content, model, True
+                except Exception as fallback_exc:
+                    logger.error(f"LLM Fallback also failed: {fallback_exc}")
+            
+            raise exc
+

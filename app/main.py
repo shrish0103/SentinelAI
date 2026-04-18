@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.router import api_router
 from core.config import get_settings
-from services.telegram_bot import start_telegram_polling, stop_telegram_polling
+from services.telegram_bot import setup_webhook, stop_telegram_polling
 
 
 @asynccontextmanager
@@ -15,16 +15,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     app.state.settings = settings
     
-    bot_task = asyncio.create_task(start_telegram_polling())
-    try:
-        yield
-    finally:
-        bot_task.cancel()
-        try:
-            await bot_task
-        except asyncio.CancelledError:
-            pass
-        await stop_telegram_polling()
+    # Automatically register webhook on startup
+    await setup_webhook()
+    
+    yield
+    
+    # Cleanup bot session on shutdown
+    await stop_telegram_polling()
 
 
 def create_app() -> FastAPI:
