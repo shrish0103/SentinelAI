@@ -18,7 +18,14 @@ async def ask_resume_question(
     notifier: TelegramNotifier = Depends(get_notifier),
 ) -> ResumeAnswer:
     try:
-        answer = await llm_service.answer_question(payload.question)
+        answer, actual_model, used_fallback = await llm_service.answer_question(payload.question)
+        if used_fallback:
+            event = await event_store.record_internal_event(
+                service="llm",
+                message=f"⚠️ Web Resume primary failed. Fallback successful: {actual_model}",
+                level="warning"
+            )
+            await notifier.notify_alert(event)
     except LLMServiceError as exc:
         failure_event = await event_store.record_internal_failure(
             service="llm-provider",
@@ -36,5 +43,6 @@ async def ask_resume_question(
         answer=answer,
         html_answer=markdown.markdown(answer, extensions=['extra', 'codehilite']),
         provider=llm_service.provider_name,
-        used_fallback=llm_service.using_fallback,
+        used_fallback=used_fallback,
     )
+

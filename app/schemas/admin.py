@@ -8,3 +8,5 @@ class AdminCommandRequest(BaseModel):
 class AdminCommandResponse(BaseModel):
     status: str
     output: str
+    document_path: str | None = None
+

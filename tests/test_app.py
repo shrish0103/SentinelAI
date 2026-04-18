@@ -39,7 +39,7 @@ class FailingLLMService:
 async def test_alert_ingestion() -> None:
     app.dependency_overrides[get_notifier] = lambda: StubNotifier()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, deploy_url="http://test") as client:
         response = await client.post(
             "/alert",
             json={
@@ -59,7 +59,7 @@ async def test_alert_ingestion() -> None:
 async def test_resume_endpoint_returns_answer() -> None:
     app.dependency_overrides[get_llm_service] = lambda: StubLLMService()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, deploy_url="http://test") as client:
         response = await client.post(
             "/resume/ask",
             json={"question": "What does Shrish specialize in?"},
@@ -73,7 +73,7 @@ async def test_resume_endpoint_returns_answer() -> None:
 @pytest.mark.asyncio
 async def test_privacy_policy_endpoint_returns_html() -> None:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, deploy_url="http://test") as client:
         response = await client.get("/privacy-policy")
 
     assert response.status_code == 200
@@ -84,7 +84,7 @@ async def test_privacy_policy_endpoint_returns_html() -> None:
 @pytest.mark.asyncio
 async def test_cors_allows_configured_frontend_origin() -> None:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, deploy_url="http://test") as client:
         response = await client.options(
             "/resume/ask",
             headers={
@@ -102,7 +102,7 @@ async def test_resume_failure_keeps_specific_provider_context() -> None:
     app.dependency_overrides[get_llm_service] = lambda: FailingLLMService()
     app.dependency_overrides[get_notifier] = lambda: StubNotifier()
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, deploy_url="http://test") as client:
         response = await client.post(
             "/resume/ask",
             json={"question": "What does Shrish specialize in?"},

@@ -14,7 +14,11 @@ class EventStore:
     async def append(self, event: EventRecord) -> EventRecord:
         async with self._lock:
             self._events.append(event)
+            # Keep only the last 200 logs to prevent memory overhead
+            if len(self._events) > 200:
+                self._events = self._events[-200:]
         return event
+
 
     async def list_events(self, limit: int = 50, level: str | None = None) -> list[EventRecord]:
         async with self._lock:
