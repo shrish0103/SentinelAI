@@ -1,4 +1,5 @@
 import socket
+import logging
 from html import escape
 
 from aiogram import Bot
@@ -8,6 +9,8 @@ from aiogram.exceptions import TelegramAPIError
 from core.config import Settings
 from schemas.alert import EventRecord
 
+logger = logging.getLogger(__name__)
+
 
 class TelegramNotifier:
     def __init__(self, settings: Settings) -> None:
@@ -16,21 +19,27 @@ class TelegramNotifier:
     async def notify_alert(self, event: EventRecord) -> bool:
         if not self._settings.telegram_bot_token or not self._settings.telegram_chat_id:
             return False
+        
+        # Force AF_INET (IPv4) to avoid OS/ISP connection issues on IPv6
         session = AiohttpSession()
         session._connector_init["family"] = socket.AF_INET
         bot = Bot(token=self._settings.telegram_bot_token, session=session)
+
         message = self._format_message(event)
+        
         try:
             await bot.send_message(
                 chat_id=self._settings.telegram_chat_id,
                 text=message,
                 parse_mode="HTML",
             )
-        except TelegramAPIError:
+            return True
+        except TelegramAPIError as e:
+            logger.error(f"Failed to send Telegram alert: {e}")
             return False
         finally:
             await bot.session.close()
-        return True
+
 
     def _format_message(self, event: EventRecord) -> str:
         lines = [
