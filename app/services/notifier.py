@@ -8,16 +8,18 @@ from aiogram.exceptions import TelegramAPIError
 
 from core.config import Settings
 from schemas.alert import EventRecord
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class TelegramNotifier:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    async def notify_alert(self, event: EventRecord) -> bool:
-        if not self._settings.telegram_bot_token or not self._settings.telegram_chat_id:
+    async def notify_alert(self, event: EventRecord, chat_id: str | None = None) -> bool:
+        target_chat = chat_id or self._settings.telegram_chat_id
+        if not self._settings.telegram_bot_token or not target_chat:
             return False
         
         # Force AF_INET (IPv4) to avoid OS/ISP connection issues on IPv6
@@ -29,7 +31,7 @@ class TelegramNotifier:
         
         try:
             await bot.send_message(
-                chat_id=self._settings.telegram_chat_id,
+                chat_id=target_chat,
                 text=message,
                 parse_mode="HTML",
             )

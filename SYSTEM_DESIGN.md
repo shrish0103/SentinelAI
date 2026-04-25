@@ -183,8 +183,10 @@ Ping target (async, with timeout)
 **Responsibilities:**
 - Inject structured resume context into every prompt
 - Delegate generation to the configured provider
-- Detect and handle provider failures
-- Self-report failures through the alert pipeline
+- **Autonomous Fallback**: Catch primary provider errors and immediately retry with a reliable fallback model (e.g., Gemini 2.0 Flash).
+- **Transparency**: Track and log the `actual_model` name extracted from provider responses.
+- Self-report failures and fallback events through the internal alert pipeline.
+
 
 **Provider selection at runtime:**
 
@@ -220,6 +222,11 @@ The `AI Layer` only ever holds a reference to `LLMProvider`. The concrete class 
 
 **No admin endpoint is publicly exposed.** All privileged operations go through the bot.
 
+**Supported Command Paths:**
+- **Portfolio (Public)**: `/resume` (PDF download), `/education`, `/projects`, `/certifications`.
+- **Diagnostics (Admin)**: `/logs [n]`, `/ping <alias>`, `/ai`.
+
+
 ---
 
 ### 5. Health Monitoring Engine
@@ -236,11 +243,12 @@ The `AI Layer` only ever holds a reference to `LLMProvider`. The concrete class 
 
 ---
 
-### 6. Logging System
+**Why it's designed this way:** All four event types (alerts, exceptions, AI failures, admin actions) share the same log schema. A single `/logs` endpoint surfaces everything. For stability, the system uses a **Circular Buffer** (in-memory) approach.
 
-**What it does:** Persists every significant system event to a queryable log store.
+**Performance Constraints:**
+- **Log Retention**: The `EventStore` limits logs to the last **200 entries**. Older events are evicted to prevent memory bloat.
+- **Parametric Querying**: The `/logs` command supports a `limit` parameter to retrieve a specific window of history.
 
-**Why it's designed this way:** All four event types (alerts, exceptions, AI failures, admin actions) share the same log schema. This means a single `/logs` endpoint can surface everything — no separate log destinations to manage.
 
 **Logged event types:**
 - Inbound alerts from external services
@@ -288,12 +296,19 @@ Free-tier and third-party LLM providers are inherently unreliable — they can b
 **Response sequence:**
 
 ```
-1. Catch provider exception
+1. Catch primary provider exception (503, Timeout, Network)
 2. Log full error context (provider, model, error type, timestamp)
-3. Emit internal alert via the same /alert pipeline
-4. Send Telegram notification to owner
-5. Return 503 to caller with a retry suggestion
+3. **Attempt Internal Fallback**: Instantiate secondary provider using `google/gemini-2.0-flash-exp:free`
+4. If Fallback succeeds:
+   - Emit `warning` alert via /alert ("Primary failed, using fallback")
+   - Notify owner with the success details
+   - Return fallback response to user
+5. If Fallback fails or no fallback is possible:
+   - Emit `critical` alert via /alert
+   - Send critical notification to owner
+   - Return 503 to caller with a retry suggestion
 ```
+
 
 **Example self-generated alert:**
 
@@ -353,3 +368,27 @@ ring without manual checks |
 | Rate limiting | Protect `/alert` and `/resume/ask` from abuse |
 | Dashboard UI | Visual log explorer and alert timeline |
 | Multi-user system | Extend role model beyond owner/visitor |
+
+---
+
+## V2.0 Modular Architecture Update
+
+### 🧩 1. Modular Router-Handler Pattern
+As the system grew, we transitioned from a monolithic `AdminService` to a highly decoupled **Router-Handler** pattern.
+- **Dynamic Handler Discovery**: Using a singleton `ActionRegistry`, handlers now self-register on startup.
+- **Dependency Injection**: The `AdminRouter` performs automated constructor injection, providing services like `HealthService` and `EventStore` to handlers only when needed.
+- **Separation of Concerns**: Each command unit (e.g., `DiagnosticsHandler`, `SystemHandler`) is isolated, ensuring that a failure in one command does not affect the core bot logic.
+
+### 👥 2. Redis-Backed Identity Switching (RBAC)
+We replaced transient in-memory flags with a persistent, distributed session model using **Upstash Redis Hashes**.
+- **Unified State**: The key `user_session:{user_id}` serves as the single source of truth for a user's `role` (Admin, Guest, Demo) and `ai_mode`.
+- **Identity Sandbox**: Demo mode is now fully isolated. When active, diagnostic handlers switch from production APIs to mock data providers, ensuring zero production data leakage during showcases.
+- **Security Gating**: A strict authorization layer in the **Admin Router** verifies every intent against the session role, preventing unauthorized access to restricted features.
+
+### 📡 3. Observable Narrative Logging (V2)
+Logging has been upgraded to support **Diagnostic Contexts**.
+- Every command execution is wrapped in a metadata-rich context, including the user's role and the AI's grounding state.
+- Narrative logs now allow for seamless debugging of "Persona Switching" and "AI Grounding" logic in a production environment.
+
+---
+*V2.0 Documentation Update — Refactored for Multi-Account Scalability*
