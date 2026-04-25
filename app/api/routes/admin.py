@@ -21,4 +21,4 @@ async def execute_admin_command(
     logger.info(f"Incoming Admin Request - UserID: {x_telegram_user_id}, Command: {payload.command}")
     is_admin = x_telegram_user_id in settings.owner_telegram_id_set
     logger.info(f"Auth Check - IsAdmin: {is_admin} (Target IDs: {settings.owner_telegram_id_set})")
-    return await admin_service.execute(payload.command, is_admin=is_admin)
+    return await admin_service.execute(payload.command, is_admin=is_admin, user_id=x_telegram_user_id or 0)

@@ -1,6 +1,14 @@
 import asyncio
+import logging
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
+
+from core.config import get_settings
+from core.logger import setup_logging
+
+# Initialize settings and global singleton logging
+settings = get_settings()
+setup_logging(settings.log_level)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

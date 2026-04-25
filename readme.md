@@ -39,21 +39,39 @@ Ask natural language questions about Shrish's skills, projects, and experience v
 
 When an AI provider fails, SentinelAI logs the failure, emits an internal alert, and can notify the owner through Telegram. AI reliability is treated as a first-class system concern.
 
-### Telegram Bot and Notifications
+### Telegram Bot and Portfolio Commands
 
-The current bootstrap is wired for `aiogram`. Telegram is used for notification delivery and is the intended path for owner-only command access as the bot layer expands.
+The Telegram bot (`aiogram`) is the primary interface for both the owner and guests. It now supports specialized portfolio commands:
+
+- `/resume`: Returns Shrish's headline and automatically sends the latest `resume.pdf`.
+- `/education`: Returns academic background (IMSEC Ghaziabad, etc.) with AI fallback if data is missing.
+- `/projects`: Returns the top 3 key projects with AI fallback.
+- `/certifications`: Returns professional certifications.
+- `/logs [n]`: (Admin only) Retrieve the last `n` system logs (default 5).
+
+### AI Reliability & Fallback
+
+SentinelAI treats LLM uptime as a priority. If the primary provider (e.g., OpenRouter with GPT-OSS) fails due to a 503 or timeout, the system automatically:
+1.  **Falls back** to a secondary reliable model (`google/gemini-2.0-flash-exp:free`).
+2.  **Alerts the owner** via Telegram that a fallback was used.
+3.  **Logs the actual model name** used for the response to ensure transparency.
+
 
 ### Health Monitoring
 
 Poll `/health/check` to inspect the status of any registered service, including databases, external APIs, LLM providers, or your own microservices. Queryable per-service for granular diagnostics.
 
-### Structured Logging
+### Structured Logging & Performance
 
-Every significant event is logged, including alerts, exceptions, AI failures, and admin actions, giving you a complete audit trail without external tooling.
+Every significant event is logged, including alerts, exceptions, AI failures, and admin actions. To maintain high performance:
+- **Buffer Limit**: The in-memory event store keeps only the last **200 logs**, discarding older ones to prevent memory bloat.
+- **Parametric Logs**: The `/logs` command supports custom limits (e.g., `/logs 20`) capped at 50 for readability.
 
 ---
 
-## API Reference
+## API & Command Reference
+
+### REST API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -63,7 +81,21 @@ Every significant event is logged, including alerts, exceptions, AI failures, an
 | `GET` | `/logs` | Retrieve recent system logs |
 | `POST` | `/admin/exec` | Execute owner-only admin commands |
 
+### Bot Commands (Telegram)
+
+| Command | Role | Description |
+|---------|------|-------------|
+| `/resume` | Guest/Admin | Text summary + Download `resume.pdf` |
+| `/education` | Guest/Admin | Academic background |
+| `/projects` | Guest/Admin | Key project portfolio |
+| `/certifications`| Guest/Admin | Professional certs |
+| `/logs [n]` | Admin | View last `n` system events |
+| `/ping [target]` | Admin | Test network connectivity |
+| `/ai` | Admin | Check current LLM provider health |
+
 ### Example `POST /alert`
+
+
 
 ```json
 {
@@ -199,3 +231,23 @@ curl -X POST http://127.0.0.1:8000/resume/ask ^
 
 **Shrish Gupta**  
 Backend Engineer focused on FastAPI, microservices, distributed systems, observability, and applied AI
+
+---
+
+## 🚀 New in V2.0: Portfolio Control Plane
+
+We have recently refactored the core to support high-end portfolio demonstrations and production-grade observability.
+
+### 🎭 Advanced Identity Matrix
+The bot now dynamically tracks user personas via a **Redis-backed session hash**:
+- **👑 Admin Mode**: Full access to live telemetry and production logs (restricted to `OWNER_TELEGRAM_IDS`).
+- **👤 Guest Mode**: AI-powered professional representative grounded in resume context.
+- **🎭 Demo Mode**: A "DevOps Sandbox" for visitors to test diagnostics and alerts using **Mock Data** and a **Dummy Sandbox Group**.
+- **🤖 AI Modifiers**: Real-time toggles between 'Resume-Grounded' and 'General Knowledge' LLM modes.
+
+### 🏗️ Architectural Upgrades
+- **Modular Command-Handler Pattern**: A decoupled **Router-Handler** architecture using self-registering units for zero-friction feature expansion.
+- **Narrative Logging**: Every system event is captured with rich metadata (intent, persona, latency) for narrative, cross-service auditing.
+- **Upstash Redis Session Layer**: High-performance, persistent state management for multi-account RBAC.
+
+> Built with Antigravity for Shrish Gupta's Professional Architecture

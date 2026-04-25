@@ -1,10 +1,10 @@
 import httpx
-import logging
 from core.prompts import get_resume_messages
 from core.config import Settings
+from core.logger import get_logger
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LLMServiceError(Exception):
@@ -47,7 +47,7 @@ class LLMServiceError(Exception):
 class LLMProvider:
     name = "base"
 
-    async def generate(self, question: str) -> tuple[str, str]:
+    async def generate(self, messages: list[dict[str, str]]) -> tuple[str, str]:
         """Returns (content, actual_model_name)"""
         raise NotImplementedError
 
@@ -55,7 +55,8 @@ class LLMProvider:
 class LocalResumeProvider(LLMProvider):
     name = "local"
 
-    async def generate(self, question: str) -> tuple[str, str]:
+    async def generate(self, messages: list[dict[str, str]]) -> tuple[str, str]:
+        question = messages[-1]["content"] if messages else ""
         lower_question = question.lower()
         if "fail" in lower_question:
             raise LLMServiceError(
@@ -64,12 +65,6 @@ class LocalResumeProvider(LLMProvider):
                 category="forced-test-failure",
                 detail="The local provider was forced to fail for testing.",
                 hint="Use a different question or switch MODEL_PROVIDER.",
-            )
-        if "specialize" in lower_question or "specialise" in lower_question:
-            return (
-                "Shrish specializes in backend engineering, FastAPI, "
-                "microservices, distributed systems, observability, and applied AI.",
-                "sentinel-resume-local"
             )
         return f"Local fallback echo: {question}", "sentinel-resume-local"
 
@@ -81,10 +76,10 @@ class OpenAICompatibleProvider(LLMProvider):
         self._api_key = api_key
         self._model_name = model_name
 
-    async def generate(self, question: str) -> str:
+    async def generate(self, messages: list[dict[str, str]]) -> tuple[str, str]:
         payload = {
             "model": self._model_name,
-            "messages": get_resume_messages(question),
+            "messages": messages,
         }
         headers = {
             "Authorization": f"Bearer {self._api_key}",
@@ -142,7 +137,6 @@ class OpenAICompatibleProvider(LLMProvider):
         data = response.json()
         try:
             content = data["choices"][0]["message"]["content"].strip()
-            # OpenRouter often returns the actual model used even if an alias was requested
             actual_model = data.get("model", self._model_name)
             return content, actual_model
         except (KeyError, IndexError, TypeError) as exc:
@@ -162,10 +156,11 @@ class OllamaProvider(LLMProvider):
         self._base_url = base_url.rstrip("/")
         self._model_name = model_name
 
-    async def generate(self, question: str) -> str:
-        messages = get_resume_messages(question)
-        # Ollama /api/generate usually takes a prompt, we'll combine system and user
-        combined_prompt = f"{messages[0]['content']}\n\n{messages[1]['content']}"
+    async def generate(self, messages: list[dict[str, str]]) -> tuple[str, str]:
+        combined_prompt = ""
+        for m in messages:
+            combined_prompt += f"{m['role'].upper()}: {m['content']}\n\n"
+            
         payload = {
             "model": self._model_name,
             "prompt": combined_prompt,
@@ -177,54 +172,17 @@ class OllamaProvider(LLMProvider):
                     f"{self._base_url}/api/generate",
                     json=payload,
                 )
-        except httpx.TimeoutException as exc:
-            raise LLMServiceError(
-                provider=self.name,
-                model=self._model_name,
-                category="timeout",
-                detail="The Ollama endpoint did not respond before timeout",
-                hint="Check whether the local Ollama model is loaded and healthy.",
-            ) from exc
-        except httpx.ConnectError as exc:
-            raise LLMServiceError(
-                provider=self.name,
-                model=self._model_name,
-                category="network-connectivity",
-                detail=f"Connection to {self._base_url} could not be established",
-                hint="Make sure Ollama is running and reachable on the configured port.",
-            ) from exc
-        except httpx.RequestError as exc:
+        except Exception as exc:
             raise LLMServiceError(
                 provider=self.name,
                 model=self._model_name,
                 category="request-error",
                 detail=str(exc),
-                hint="Retry shortly and inspect the local inference service.",
-            ) from exc
-
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            detail = response.text.strip()[:400] or "Ollama returned an error response"
-            raise LLMServiceError(
-                provider=self.name,
-                model=self._model_name,
-                category="upstream-http-error",
-                detail=detail,
-                status_code=response.status_code,
-                hint="Check model availability and local resource pressure.",
+                hint="Make sure Ollama is running and reachable.",
             ) from exc
 
         data = response.json()
         answer = data.get("response")
-        if not answer:
-            raise LLMServiceError(
-                provider=self.name,
-                model=self._model_name,
-                category="invalid-response-payload",
-                detail="The Ollama response did not include a response field",
-                hint="Inspect the upstream payload format and model compatibility.",
-            )
         return answer.strip(), self._model_name
 
 
@@ -233,20 +191,11 @@ class LLMService:
         self._settings = settings
         self._provider = self._resolve_provider()
         self.provider_name = self._provider.name
-        self.using_fallback = self._settings.model_provider != self._provider.name
 
     def _resolve_provider(self) -> LLMProvider:
         if self._settings.model_provider == "local":
             return LocalResumeProvider()
         if self._settings.model_provider == "openrouter":
-            if not self._settings.api_key:
-                raise LLMServiceError(
-                    provider="openrouter",
-                    model=self._settings.model_name,
-                    category="configuration-error",
-                    detail="API_KEY is missing from the environment",
-                    hint="Set API_KEY in .env before calling /resume/ask.",
-                )
             return OpenAICompatibleProvider(
                 name="openrouter",
                 base_url=self._settings.openrouter_base_url,
@@ -254,14 +203,6 @@ class LLMService:
                 model_name=self._settings.model_name,
             )
         if self._settings.model_provider == "openai":
-            if not self._settings.api_key:
-                raise LLMServiceError(
-                    provider="openai",
-                    model=self._settings.model_name,
-                    category="configuration-error",
-                    detail="API_KEY is missing from the environment",
-                    hint="Set API_KEY in .env before calling /resume/ask.",
-                )
             return OpenAICompatibleProvider(
                 name="openai",
                 base_url=self._settings.openai_base_url,
@@ -273,40 +214,34 @@ class LLMService:
                 base_url=self._settings.ollama_base_url,
                 model_name=self._settings.model_name,
             )
-        raise LLMServiceError(
-            provider=self._settings.model_provider,
-            model=self._settings.model_name,
-            category="configuration-error",
-            detail=f"Unknown provider '{self._settings.model_provider}'",
-            hint="Choose one of: openrouter, openai, ollama, local.",
-        )
+        raise ValueError(f"Unknown provider: {self._settings.model_provider}")
 
-    async def answer_question(self, question: str) -> tuple[str, str, bool]:
-        """Returns (content, actual_model, used_fallback)"""
+    async def _execute_generate(self, messages: list[dict[str, str]]) -> tuple[str, str, bool]:
         try:
-            content, model = await self._provider.generate(question=question)
-            logger.info(f"LLM Response generated using primary model: {model}")
+            content, model = await self._provider.generate(messages=messages)
             return content, model, False
         except LLMServiceError as exc:
-            # If the primary provider fails due to upstream issues, try fallback
-            if (
-                exc.category in ("upstream-http-error", "timeout", "network-connectivity")
-                and self.provider_name == "openrouter"
-                and self._settings.api_key
-            ):
-                logger.warning(f"Primary OpenRouter model failed: {exc.summary}. Attempting fallback...")
-                try:
-                    fallback_provider = OpenAICompatibleProvider(
-                        name="openrouter",
-                        base_url=self._settings.openrouter_base_url,
-                        api_key=self._settings.api_key,
-                        model_name=self._settings.fallback_model_name
-                    )
-                    content, model = await fallback_provider.generate(question=question)
-                    logger.info(f"LLM Response generated using FALLBACK model: {model}")
-                    return content, model, True
-                except Exception as fallback_exc:
-                    logger.error(f"LLM Fallback also failed: {fallback_exc}")
-            
+            if exc.category in ("upstream-http-error", "timeout") and self.provider_name == "openrouter" and self._settings.api_key:
+                logger.warning(f"Primary model failed. Attempting fallback...")
+                fallback_provider = OpenAICompatibleProvider(
+                    name="openrouter",
+                    base_url=self._settings.openrouter_base_url,
+                    api_key=self._settings.api_key,
+                    model_name=self._settings.fallback_model_name
+                )
+                content, model = await fallback_provider.generate(messages=messages)
+                return content, model, True
             raise exc
 
+    async def answer_question(self, question: str) -> tuple[str, str, bool]:
+        """Answering questions with resume context (default behavior)."""
+        messages = get_resume_messages(question)
+        return await self._execute_generate(messages)
+
+    async def answer_general_question(self, question: str) -> tuple[str, str, bool]:
+        """Answering questions without resume context (General AI Mode)."""
+        messages = [
+            {"role": "system", "content": "You are a helpful and intelligent AI assistant. You answer any question based on your general knowledge. You are not restricted to any specific resume or portfolio context."},
+            {"role": "user", "content": question}
+        ]
+        return await self._execute_generate(messages)

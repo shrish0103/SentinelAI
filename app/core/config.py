@@ -33,13 +33,22 @@ class Settings(BaseSettings):
     )
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
+    dummy_alert_group_id: str | None = None
+    dummy_alert_group_link: str | None = None
+    
+    # Operational
+    log_level: str = "INFO"
     health_timeout_seconds: float = 3.0
     cors_origins_json: str = Field(
         default='["https://shrish0.github.io","https://semimat-otto-undilatorily.ngrok-free.dev"]'
     )
     service_targets_json: str = Field(
-        default='{"sentinel-ai":"https://sentinelai-p4xw.onrender.com","browser-mcp":"https://browser-mcp-79y4.onrender.com/health"}'
+        default='{"sentinel-ai":"https://sentinelai-p4xw.onrender.com","llm":"provider://active","upstash":"redis://rest","telegram":"telegram://bot"}'
     )
+
+    # Upstash Redis
+    upstash_redis_rest_url: str | None = None
+    upstash_redis_rest_token: str | None = None
 
     @property
     def service_targets(self) -> dict[str, str]:

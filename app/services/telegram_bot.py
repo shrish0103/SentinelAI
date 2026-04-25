@@ -11,8 +11,9 @@ from core.dependencies import get_admin_service, load_settings
 
 from services.admin import AdminService
 from core.prompts import get_admin_help_text
+from core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 import socket
 from aiogram.client.session.aiohttp import AiohttpSession
@@ -31,10 +32,20 @@ async def command_start_handler(message: Message) -> None:
     settings = load_settings()
     admin_service = get_admin_service()
     
-    is_admin = message.from_user.id in settings.owner_telegram_id_set if message.from_user else False
+    # Security Context Check
+    is_private = message.chat.type == "private"
+    is_admin_group = str(message.chat.id) == str(settings.telegram_chat_id)
+    
+    if not is_private and not is_admin_group:
+        logger.warning(f"⚠️ Start Command Blocked: Unauthorized group {message.chat.id} ({message.chat.title})")
+        await message.answer("⚠️ *Security Violation*: This bot only accepts commands via Private DM or the Admin Control Group.", parse_mode="Markdown")
+        return
+
+    is_admin = (message.from_user.id in settings.owner_telegram_id_set) if message.from_user else False
+    user_id = message.from_user.id if message.from_user else 0
     
     # Use the unified executor for /start to ensure consistency
-    response = await admin_service.execute("/start", is_admin=is_admin)
+    response = await admin_service.execute("/start", is_admin=is_admin, user_id=user_id)
     try:
         await message.answer(response.output, parse_mode="Markdown")
     except TelegramAPIError:
@@ -53,13 +64,22 @@ async def process_message_handler(message: Message) -> None:
     settings = load_settings()
     admin_service = get_admin_service()
     
+    # Security Context Check: Block commands in non-admin groups
+    is_private = message.chat.type == "private"
+    is_admin_group = str(message.chat.id) == str(settings.telegram_chat_id)
+    
+    if message.text and message.text.startswith("/") and not is_private and not is_admin_group:
+        logger.warning(f"⚠️ Command Rejected: Attempt in group {message.chat.id} by user {message.from_user.id if message.from_user else 'unknown'}")
+        await message.answer("⚠️ *Access Denied*: Command execution is restricted to Private DM or the official Monitoring Group.", parse_mode="Markdown")
+        return
+
     user_id = message.from_user.id if message.from_user else 0
     is_admin = user_id in settings.owner_telegram_id_set
     
     if message.text:
         try:
             # Let AdminService decide if it's a command or a portfolio question
-            response = await admin_service.execute(message.text, is_admin=is_admin)
+            response = await admin_service.execute(message.text, is_admin=is_admin, user_id=user_id)
             
             try:
                 # Attempt to send with Markdown
